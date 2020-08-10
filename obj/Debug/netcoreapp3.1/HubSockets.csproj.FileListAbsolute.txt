@@ -1,0 +1,9 @@
+D:\Repositories\HubSockets\bin\Debug\netcoreapp3.1\HubSockets.deps.json
+D:\Repositories\HubSockets\bin\Debug\netcoreapp3.1\HubSockets.dll
+D:\Repositories\HubSockets\bin\Debug\netcoreapp3.1\HubSockets.pdb
+D:\Repositories\HubSockets\obj\Debug\netcoreapp3.1\HubSockets.AssemblyInfoInputs.cache
+D:\Repositories\HubSockets\obj\Debug\netcoreapp3.1\HubSockets.AssemblyInfo.cs
+D:\Repositories\HubSockets\obj\Debug\netcoreapp3.1\HubSockets.dll
+D:\Repositories\HubSockets\obj\Debug\netcoreapp3.1\HubSockets.pdb
+D:\Repositories\HubSockets\obj\Debug\netcoreapp3.1\HubSockets.csproj.CoreCompileInputs.cache
+D:\Repositories\HubSockets\obj\Debug\netcoreapp3.1\HubSockets.csprojAssemblyReference.cache
