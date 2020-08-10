@@ -44,10 +44,6 @@ namespace HubSockets
                 var webSocket = await context.WebSockets.AcceptWebSocketAsync();
                 await AddSocket(new HubSocket(Guid.NewGuid(), webSocket));
             }
-            else
-            {
-                context.Response.StatusCode = 400;
-            }
             await next();
         }
 
