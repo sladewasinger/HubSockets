@@ -42,9 +42,10 @@ namespace HubSockets
             if (context.WebSockets.IsWebSocketRequest)
             {
                 var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                await AddSocket(new HubSocket(Guid.NewGuid(), webSocket));
+                using var hubSocket = new HubSocket(Guid.NewGuid(), webSocket);
+                await AddSocket(hubSocket);
             }
-            if (!context.Response.HasStarted)
+            else
             {
                 await next();
             }
