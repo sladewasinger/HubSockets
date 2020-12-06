@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -42,8 +43,7 @@ namespace HubSockets
             if (context.WebSockets.IsWebSocketRequest)
             {
                 var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                using var hubSocket = new HubSocket(Guid.NewGuid(), webSocket);
-                await AddSocket(hubSocket);
+                await AddSocket(webSocket);
             }
             else
             {
@@ -51,14 +51,41 @@ namespace HubSockets
             }
         }
 
-        public async Task AddSocket(HubSocket hubSocket)
+        public async Task AddSocket(WebSocket webSocket)
         {
+            using var hubSocket = new HubSocket(Guid.NewGuid(), webSocket);
+
             hubSocketRepository.AddOrUpdate(hubSocket.ID, hubSocket);
             hubSocket.DataReceived += DataReceived;
+
+            DataReceived(this, new HubSocketEventArgs()
+            {
+                Data = JsonConvert.SerializeObject(new HubData()
+                {
+                    MethodName = nameof(Hub.OnConnectedAsync)
+                }),
+                HubSocket = hubSocket
+            });
+
+            HubData hubSocketConnected = new HubData()
+            {
+                Data = hubSocket.ID,
+                MethodName = "HubSocketConnected"
+            };
+            await hubSocket.SendData(hubSocketConnected);
 
             await hubSocket.ListenLoop(); // infinite loop until socket closed.
 
             RemoveSocket(hubSocket.ID);
+
+            DataReceived(this, new HubSocketEventArgs()
+            {
+                Data = JsonConvert.SerializeObject(new HubData()
+                {
+                    MethodName = nameof(Hub.OnDisconnectedAsync)
+                }),
+                HubSocket = hubSocket
+            });
         }
 
         public void RemoveSocket(Guid id)
@@ -67,7 +94,6 @@ namespace HubSockets
             {
                 throw new Exception($"Could not remove socket with id: '{id}'");
             }
-            removedSocket.Dispose();
         }
 
         public async void DataReceived(object sender, EventArgs e)
@@ -95,43 +121,48 @@ namespace HubSockets
 
                     if (method != null)
                     {
-                        var methodParameters = method.GetParameters();
-                        List<object> targetParams = null;
-
-                        if (methodParameters.Any())
-                        {
-                            targetParams = new List<object>();
-                            var jProperties = data.Properties();
-
-                            foreach (var param in methodParameters)
-                            {
-                                var jProp = jProperties.Single(x => x.Name == param.Name);
-                                targetParams.Add(jProp.ToObject(param.ParameterType));
-                            }
-                        }
-
                         try
                         {
-                            var task = (Task)method.Invoke(hub, targetParams?.ToArray());
+                            var methodParameters = method.GetParameters();
+                            List<object> targetParams = null;
 
-                            if (task != null)
+                            if (methodParameters.Any())
+                            {
+                                targetParams = new List<object>();
+                                var jProperties = data.Properties();
+
+                                foreach (var param in methodParameters)
+                                {
+                                    var jProp = jProperties.Single(x => x.Name == param.Name);
+                                    targetParams.Add(jProp.ToObject(param.ParameterType));
+                                }
+                            }
+
+                            var invokeResult = method.Invoke(hub, targetParams?.ToArray());
+                            object response = null;
+
+                            if (invokeResult is Task task)
                             {
                                 await task.ConfigureAwait(false);
 
                                 var resultProperty = task.GetType().GetProperty("Result");
-                                var response = resultProperty.GetValue(task);
+                                response = resultProperty.GetValue(task);
+                            }
+                            else if (invokeResult != null)
+                            {
+                                response = invokeResult;
+                            }
 
-                                if (response != null)
+                            if (response != null)
+                            {
+                                HubData immediateResponse = new HubData()
                                 {
-                                    HubData immediateResponse = new HubData()
-                                    {
-                                        Data = response,
-                                        MethodName = null,
-                                        PromiseId = requestHubData.PromiseId
-                                    };
+                                    Data = response,
+                                    MethodName = null,
+                                    PromiseId = requestHubData.PromiseId
+                                };
 
-                                    await hubSocketEventArgs.HubSocket.SendData(immediateResponse);
-                                }
+                                await hubSocketEventArgs.HubSocket.SendData(immediateResponse);
                             }
                         }
                         catch (Exception ex)

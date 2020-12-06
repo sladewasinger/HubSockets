@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.AspNetCore.Connections;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,8 @@ namespace HubSockets
 {
     public class HubSocket : IDisposable
     {
+        private bool _disposed = false;
+
         public Guid ID { get; set; }
         public event EventHandler DataReceived;
 
@@ -40,12 +43,20 @@ namespace HubSockets
         public async Task ListenLoop()
         {
             string fullMessage = string.Empty;
-            while (true)
+            while (!_disposed)
             {
                 var buffer = new byte[BufferSize];
                 var seg = new ArraySegment<byte>(buffer);
+                WebSocketReceiveResult result;
 
-                var result = await _socket.ReceiveAsync(seg, CancellationToken.None);
+                try
+                {
+                    result = await _socket.ReceiveAsync(seg, CancellationToken.None);
+                }
+                catch
+                {
+                    break;
+                }
 
                 if (_socket.CloseStatus.HasValue || _socket.State != WebSocketState.Open)
                     break;
@@ -71,14 +82,11 @@ namespace HubSockets
 
                 await _socket.SendAsync(outgoing, WebSocketMessageType.Text, true, CancellationToken.None);
             }
-            else
-            {
-                throw new Exception("Attempted to send data but the unerlying socket is not open!");
-            }
         }
 
         public void Dispose()
         {
+            _disposed = true;
             _socket.Dispose();
         }
     }

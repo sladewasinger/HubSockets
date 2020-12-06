@@ -2,7 +2,7 @@
 {
     public interface IHub
     {
-        void OnConnected();
-        void OnDisconnected();
+        void OnConnectedAsync();
+        void OnDisconnectedAsync();
     }
 }

@@ -7,14 +7,9 @@
 
         public Hub() { }
 
-        public virtual void OnConnected()
-        {
-
+        public virtual async void OnConnectedAsync() {
         }
 
-        public virtual void OnDisconnected()
-        {
-
-        }
+        public virtual void OnDisconnectedAsync() { }
     }
 }
