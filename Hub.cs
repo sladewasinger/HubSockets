@@ -7,7 +7,7 @@
 
         public Hub() { }
 
-        public virtual async void OnConnectedAsync() {
+        public virtual void OnConnectedAsync() {
         }
 
         public virtual void OnDisconnectedAsync() { }

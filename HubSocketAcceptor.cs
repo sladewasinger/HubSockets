@@ -114,6 +114,7 @@ namespace HubSockets
                     HubData requestHubData = JsonConvert.DeserializeObject<HubData>(hubSocketEventArgs.Data);
 
                     string methodName = requestHubData.MethodName;
+
                     JObject data = requestHubData.Data as JObject;
 
                     var method = hub.GetType().GetMethod(methodName,
@@ -129,12 +130,22 @@ namespace HubSockets
                             if (methodParameters.Any())
                             {
                                 targetParams = new List<object>();
-                                var jProperties = data.Properties();
+                                var jProperties = data?.Properties() ?? Enumerable.Empty<JProperty>();
 
                                 foreach (var param in methodParameters)
                                 {
-                                    var jProp = jProperties.Single(x => x.Name == param.Name);
-                                    targetParams.Add(jProp.ToObject(param.ParameterType));
+                                    var jProp = jProperties.SingleOrDefault(x => x.Name == param.Name);
+                                    if (jProp != null)
+                                    {
+                                        targetParams.Add(jProp.ToObject(param.ParameterType));
+                                    }
+                                }
+
+                                if (methodParameters.Any() && methodParameters.Count() != targetParams.Count())
+                                {
+                                    throw new Exception($"Parameter mismatch. Method '{method.Name}' expects params: [" +
+                                        $"{string.Join(",", methodParameters.Select(x => $"{x.ParameterType.Name} {x.Name}"))}], but got [" +
+                                        string.Join(",", jProperties.Select(x => $"{x.Type} {x.Name}")) + "]");
                                 }
                             }
 
